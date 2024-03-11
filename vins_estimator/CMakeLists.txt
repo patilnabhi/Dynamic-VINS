@@ -1,62 +1,57 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.10)
 project(vins_estimator)
 
-set(CMAKE_BUILD_TYPE "Release")
-# set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-# set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_CXX_FLAGS "-std=c++14")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -fPIC -lglog)
+endif()
 
-find_package(catkin REQUIRED COMPONENTS
-        roscpp
-        std_msgs
-        geometry_msgs
-        nav_msgs
-        tf
-        cv_bridge
-        camera_model
-        message_filters
-        yolo_ros
-        image_transport
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
-        nodelet
-        )
-        
-find_package(OpenCV REQUIRED)
-
-# message(WARNING "OpenCV_VERSION: ${OpenCV_VERSION}")
-
+## Find system dependencies
 find_package(Ceres REQUIRED)
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-find_package(Eigen3)
-include_directories(
-        ${catkin_INCLUDE_DIRS}
-        ${CERES_INCLUDE_DIRS}
-        ${EIGEN3_INCLUDE_DIR}
+## vins_lib
+ament_auto_add_library(vins_lib SHARED
+  src/utility/parameters.cpp
+  src/estimator/estimator.cpp
+  src/feature_manager/feature_manager.cpp
+#   src/factor/pose_local_parameterization.cpp
+  src/factor/projection_factor.cpp
+  src/factor/projection_td_factor.cpp
+#   src/factor/marginalization_factor.cpp
+  src/utility/utility.cpp
+#   src/utility/visualization.cpp
+#   src/utility/CameraPoseVisualization.cpp
+#   src/initial/solve_5pts.cpp
+#   src/initial/initial_aligment.cpp
+#   src/initial/initial_sfm.cpp
+#   src/initial/initial_ex_rotation.cpp
+#   src/feature_tracker/feature_tracker.cpp
+)
+target_link_libraries(vins_lib
+  ${CERES_LIBRARIES}
 )
 
-catkin_package()
-
-add_library(vins_lib
-        src/utility/parameters.cpp
-        src/estimator/estimator.cpp
-        src/feature_manager/feature_manager.cpp
-        src/factor/pose_local_parameterization.cpp
-        src/factor/projection_factor.cpp
-        src/factor/projection_td_factor.cpp
-        src/factor/marginalization_factor.cpp
-        src/utility/utility.cpp
-        src/utility/visualization.cpp
-        src/utility/CameraPoseVisualization.cpp
-        src/initial/solve_5pts.cpp
-        src/initial/initial_aligment.cpp
-        src/initial/initial_sfm.cpp
-        src/initial/initial_ex_rotation.cpp
-        src/feature_tracker/feature_tracker.cpp)
-target_link_libraries(vins_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES} /usr/local/lib/libSophus.so
+## estimaor_node
+ament_auto_add_library(${PROJECT}_node SHARED
+  src/estimator_node.cpp
+)
+rclcpp_components_register_node(${PROJECT}_node
+  PLUGIN "estimator_node_ns::EstimatorNode"
+  EXECUTABLE estimator_node
+)
+target_link_libraries(${PROJECT}_node
+  vins_lib
 )
 
-add_library(estimator_nodelet src/estimator_nodelet.cpp)
-target_link_libraries(estimator_nodelet vins_lib)
-add_dependencies(estimator_nodelet yolo_ros_generate_messages_cpp)
+# install launch files
+# install(DIRECTORY 
+#     launch 
+#     config
+#     DESTINATION share/${PROJECT_NAME})
+
+ament_auto_package()

@@ -5,7 +5,7 @@
 #include <fstream>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <vector>
 
 const double FOCAL_LENGTH = 460.0;
@@ -76,7 +76,7 @@ extern int STATIC_INIT;
 
 extern int FIX_DEPTH;
 
-void readParameters(ros::NodeHandle &n);
+void readParameters(const rclcpp::Logger& logger, const std::string& config_file);
 
 enum SIZE_PARAMETERIZATION
 {

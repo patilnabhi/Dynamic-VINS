@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ros/assert.h>
+// #include <ros/assert.h>
+// #include <rclcpp/rclcpp.hpp>
 #include <ceres/ceres.h>
 #include <Eigen/Dense>
 #include "../utility/utility.h"
@@ -13,7 +14,7 @@ public:
     ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j);
     virtual bool Evaluate(double const *const *parameters, double *residuals,
                           double **jacobians) const;
-    void         check(double **parameters);
+    void         params_check(double **parameters);
 
     Eigen::Vector3d             pts_i, pts_j;
     Eigen::Matrix<double, 2, 3> tangent_base;

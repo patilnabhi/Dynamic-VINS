@@ -62,27 +62,27 @@ int STATIC_INIT;
 
 int FIX_DEPTH;
 
-template <typename T>
-T readParam(ros::NodeHandle &n, std::string name)
-{
-    T ans;
-    if (n.getParam(name, ans))
-    {
-        ROS_INFO_STREAM("Loaded " << name << ": " << ans);
-    }
-    else
-    {
-        ROS_ERROR_STREAM("Failed to load " << name);
-        n.shutdown();
-    }
-    return ans;
-}
+// template <typename T>
+// T readParam(ros::NodeHandle &n, std::string name)
+// {
+//     T ans;
+//     if (n.getParam(name, ans))
+//     {
+//         ROS_INFO_STREAM("Loaded " << name << ": " << ans);
+//     }
+//     else
+//     {
+//         ROS_ERROR_STREAM("Failed to load " << name);
+//         n.shutdown();
+//     }
+//     return ans;
+// }
 
 // https://blog.csdn.net/qq_16952303/article/details/80259660
-void readParameters(ros::NodeHandle &n)
+void readParameters(const rclcpp::Logger& logger, const std::string& config_file)
 {
-    std::string config_file;
-    config_file = readParam<std::string>(n, "config_file");
+    // std::string config_file;
+    // config_file = readParam<std::string>(n, "config_file");
     cv::FileStorage fsSettings;
     fsSettings.open(config_file, cv::FileStorage::READ);
     if (!fsSettings.isOpened())
@@ -110,9 +110,9 @@ void readParameters(ros::NodeHandle &n)
     SHOW_TRACK                   = fsSettings["show_track"];
     EQUALIZE                     = fsSettings["equalize"];
     FISHEYE                      = fsSettings["fisheye"];
-    std::string VINS_FOLDER_PATH = readParam<std::string>(n, "vins_folder");
-    if (FISHEYE == 1)
-        FISHEYE_MASK = VINS_FOLDER_PATH + "config/fisheye_mask.jpg";
+    // std::string VINS_FOLDER_PATH = readParam<std::string>(n, "vins_folder");
+    // if (FISHEYE == 1)
+    //     FISHEYE_MASK = VINS_FOLDER_PATH + "config/fisheye_mask.jpg";
     CAM_NAMES = config_file;
 
     DEPTH_MIN_DIST = fsSettings["depth_min_dist"];
@@ -123,10 +123,10 @@ void readParameters(ros::NodeHandle &n)
 
     NUM_GRID_ROWS = fsSettings["num_grid_rows"];
     NUM_GRID_COLS = fsSettings["num_grid_cols"];
-    ROS_INFO("NUM_GRID_ROWS: %d, NUM_GRID_COLS: %d", NUM_GRID_ROWS, NUM_GRID_COLS);
+    RCLCPP_INFO(logger, "NUM_GRID_ROWS: %d, NUM_GRID_COLS: %d", NUM_GRID_ROWS, NUM_GRID_COLS);
 
     FRONTEND_FREQ = fsSettings["frontend_freq"];
-    ROS_INFO("FRONTEND_FREQ: %d", FRONTEND_FREQ);
+    RCLCPP_INFO(logger, "FRONTEND_FREQ: %d", FRONTEND_FREQ);
 
     STEREO_TRACK   = false;
     PUB_THIS_FRAME = false;
@@ -137,7 +137,7 @@ void readParameters(ros::NodeHandle &n)
     SOLVER_TIME    = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];
     MIN_PARALLAX   = fsSettings["keyframe_parallax"];
-    ROS_INFO("keyframe_parallax: %f", MIN_PARALLAX);
+    RCLCPP_INFO(logger, "keyframe_parallax: %f", MIN_PARALLAX);
     MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
 
     std::string OUTPUT_PATH;
@@ -147,7 +147,7 @@ void readParameters(ros::NodeHandle &n)
     fout.close();
 
     USE_IMU = fsSettings["imu"];
-    ROS_INFO("USE_IMU: %d\n", USE_IMU);
+    RCLCPP_INFO(logger, "USE_IMU: %d\n", USE_IMU);
     if (USE_IMU)
     {
         fsSettings["imu_topic"] >> IMU_TOPIC;
@@ -162,7 +162,7 @@ void readParameters(ros::NodeHandle &n)
     ROW        = fsSettings["image_height"];
     COL        = fsSettings["image_width"];
     IMAGE_SIZE = ROW * COL;
-    ROS_INFO("ROW: %f COL: %f ", ROW, COL);
+    RCLCPP_INFO(logger, "ROW: %f COL: %f ", ROW, COL);
 
     for (auto iter : fsSettings["semantic_label"])
     {
@@ -182,7 +182,7 @@ void readParameters(ros::NodeHandle &n)
     ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];
     if (ESTIMATE_EXTRINSIC == 2)
     {
-        ROS_WARN("have no prior about extrinsic param, calibrate extrinsic param");
+        RCLCPP_WARN(logger, "have no prior about extrinsic param, calibrate extrinsic param");
         RIC.emplace_back(Eigen::Matrix3d::Identity());
         TIC.emplace_back(Eigen::Vector3d::Zero());
         EX_CALIB_RESULT_PATH = OUTPUT_PATH + "/extrinsic_parameter.txt";
@@ -191,11 +191,11 @@ void readParameters(ros::NodeHandle &n)
     {
         if (ESTIMATE_EXTRINSIC == 1)
         {
-            ROS_WARN(" Optimize extrinsic param around initial guess!");
+            RCLCPP_WARN(logger, " Optimize extrinsic param around initial guess!");
             EX_CALIB_RESULT_PATH = OUTPUT_PATH + "/extrinsic_parameter.txt";
         }
         if (ESTIMATE_EXTRINSIC == 0)
-            ROS_WARN(" fix extrinsic param ");
+            RCLCPP_WARN(logger, " fix extrinsic param ");
 
         cv::Mat cv_R, cv_T;
         fsSettings["extrinsicRotation"] >> cv_R;
@@ -209,8 +209,8 @@ void readParameters(ros::NodeHandle &n)
         Ric     = eigen_R;
         RIC.push_back(eigen_R);
         TIC.push_back(eigen_T);
-        ROS_INFO_STREAM("Extrinsic_R : " << std::endl << RIC[0]);
-        ROS_INFO_STREAM("Extrinsic_T : " << std::endl << TIC[0].transpose());
+        RCLCPP_INFO_STREAM(logger, "Extrinsic_R : " << std::endl << RIC[0]);
+        RCLCPP_INFO_STREAM(logger, "Extrinsic_T : " << std::endl << TIC[0].transpose());
     }
 
     INIT_DEPTH         = 5.0;
@@ -220,15 +220,15 @@ void readParameters(ros::NodeHandle &n)
     TD          = fsSettings["td"];
     ESTIMATE_TD = fsSettings["estimate_td"];
     if (ESTIMATE_TD)
-        ROS_INFO_STREAM("Unsynchronized sensors, online estimate time offset, initial td: " << TD);
+        RCLCPP_INFO_STREAM(logger, "Unsynchronized sensors, online estimate time offset, initial td: " << TD);
     else
-        ROS_INFO_STREAM("Synchronized sensors, fix time offset: " << TD);
+        RCLCPP_INFO_STREAM(logger, "Synchronized sensors, fix time offset: " << TD);
 
     ROLLING_SHUTTER = fsSettings["rolling_shutter"];
     if (ROLLING_SHUTTER)
     {
         TR = fsSettings["rolling_shutter_tr"];
-        ROS_INFO_STREAM("rolling shutter camera, read out time per line: " << TR);
+        RCLCPP_INFO_STREAM(logger, "rolling shutter camera, read out time per line: " << TR);
     }
     else
     {

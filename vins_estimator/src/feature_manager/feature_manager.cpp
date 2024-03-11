@@ -9,7 +9,9 @@ int FeaturePerId::endFrame()
     return start_frame + feature_per_frame.size() - 1;
 }
 
-FeatureManager::FeatureManager(Matrix3d _Rs[]) : Rs(_Rs)
+FeatureManager::FeatureManager(const rclcpp::Logger& logger, Matrix3d Rs[]) 
+    : logger_(logger),
+    Rs_(Rs)
 {
     for (auto &i : ric)
         i.setIdentity();
@@ -207,8 +209,8 @@ bool FeatureManager::addFeatureCheckParallax(int                                
                                              map<int, Eigen::Matrix<double, 7, 1>> &image,
                                              double                                 td)
 {
-    ROS_DEBUG("input feature: %d", (int)image.size());
-    ROS_DEBUG("num of feature: %d", getFeatureCount());
+    RCLCPP_DEBUG(logger_, "input feature: %d", (int)image.size());
+    RCLCPP_DEBUG(logger_, "num of feature: %d", getFeatureCount());
     double parallax_sum = 0;
     int    parallax_num = 0;
     last_track_num      = 0;
@@ -296,30 +298,30 @@ bool FeatureManager::addFeatureCheckParallax(int                                
     }
     else
     {
-        ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
-        ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
+        RCLCPP_DEBUG(logger_, "parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
+        RCLCPP_DEBUG(logger_, "current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
         return parallax_sum / parallax_num >= MIN_PARALLAX;
     }
 }
 
 void FeatureManager::debugShow()
 {
-    ROS_DEBUG("debug show");
+    RCLCPP_DEBUG(logger_, "debug show");
     for (auto &it : feature)
     {
-        ROS_ASSERT(!it.feature_per_frame.empty());
-        ROS_ASSERT(it.start_frame >= 0);
-        ROS_ASSERT(it.used_num >= 0);
+        // RCLCPP_ERROR(logger_, !it.feature_per_frame.empty());
+        // RCLCPP_ERROR(logger_, it.start_frame >= 0);
+        // RCLCPP_ERROR(logger_, it.used_num >= 0);
 
-        ROS_DEBUG("%d,%d,%d ", it.feature_id, it.used_num, it.start_frame);
+        RCLCPP_DEBUG(logger_, "%d,%d,%d ", it.feature_id, it.used_num, it.start_frame);
         int sum = 0;
         for (auto &j : it.feature_per_frame)
         {
-            ROS_DEBUG("%d,", int(j.is_used));
+            RCLCPP_DEBUG(logger_, "%d,", int(j.is_used));
             sum += j.is_used;
             printf("(%lf,%lf) ", j.point(0), j.point(1));
         }
-        ROS_ASSERT(it.used_num == sum);
+        // RCLCPP_ERROR(logger_, it.used_num == sum);
     }
 }
 
@@ -388,7 +390,7 @@ void FeatureManager::setDepth(const VectorXd &x)
             continue;
 
         it_per_id.estimated_depth = 1.0 / x(++feature_index);
-        // ROS_INFO("feature id %d , start_frame %d, depth %f ",
+        // RCLCPP_INFO(logger_, "feature id %d , start_frame %d, depth %f ",
         // it_per_id->feature_id, it_per_id-> start_frame,
         // it_per_id->estimated_depth);
         if (it_per_id.estimated_depth < 0)
@@ -462,13 +464,13 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d _ric[])
 
         int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
 
-        ROS_ASSERT(NUM_OF_CAM == 1);
+        // RCLCPP_ERROR(logger_, NUM_OF_CAM == 1);
         Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);
         int             svd_idx = 0;
 
         Eigen::Matrix<double, 3, 4> P0;
-        Eigen::Vector3d             t0 = Ps[imu_i] + Rs[imu_i] * tic[0];
-        Eigen::Matrix3d             R0 = Rs[imu_i] * _ric[0];
+        Eigen::Vector3d             t0 = Ps[imu_i] + Rs_[imu_i] * tic[0];
+        Eigen::Matrix3d             R0 = Rs_[imu_i] * _ric[0];
         P0.leftCols<3>()               = Eigen::Matrix3d::Identity();
         P0.rightCols<1>()              = Eigen::Vector3d::Zero();
 
@@ -476,8 +478,8 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d _ric[])
         {
             imu_j++;
 
-            Eigen::Vector3d             t1 = Ps[imu_j] + Rs[imu_j] * tic[0];
-            Eigen::Matrix3d             R1 = Rs[imu_j] * _ric[0];
+            Eigen::Vector3d             t1 = Ps[imu_j] + Rs_[imu_j] * tic[0];
+            Eigen::Matrix3d             R1 = Rs_[imu_j] * _ric[0];
             Eigen::Vector3d             t  = R0.transpose() * (t1 - t0);
             Eigen::Matrix3d             R  = R0.transpose() * R1;
             Eigen::Matrix<double, 3, 4> P;
@@ -490,7 +492,7 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d _ric[])
             if (imu_i == imu_j)
                 continue;
         }
-        ROS_ASSERT(svd_idx == svd_A.rows());
+        // RCLCPP_ERROR(logger_, svd_idx == svd_A.rows());
         Eigen::Vector4d svd_V =
             Eigen::JacobiSVD<Eigen::MatrixXd>(svd_A, Eigen::ComputeThinV).matrixV().rightCols<1>();
         double svd_method = svd_V[2] / svd_V[3];
@@ -524,8 +526,8 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
 
         int imu_i = it_per_id.start_frame;
 
-        Eigen::Vector3d tr = _Ps[imu_i] + Rs[imu_i] * _tic[0];
-        Eigen::Matrix3d Rr = Rs[imu_i] * _ric[0];
+        Eigen::Vector3d tr = _Ps[imu_i] + Rs_[imu_i] * _tic[0];
+        Eigen::Matrix3d Rr = Rs_[imu_i] * _ric[0];
 
         vector<double> verified_depths;
         int            no_depth_num = 0;
@@ -542,8 +544,8 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
                 no_depth_num++;
                 continue;
             }
-            Eigen::Vector3d t0 = _Ps[imu_i + k] + Rs[imu_i + k] * _tic[0];
-            Eigen::Matrix3d R0 = Rs[imu_i + k] * _ric[0];
+            Eigen::Vector3d t0 = _Ps[imu_i + k] + Rs_[imu_i + k] * _tic[0];
+            Eigen::Matrix3d R0 = Rs_[imu_i + k] * _ric[0];
             Eigen::Vector3d point0(it_per_id.feature_per_frame[k].point *
                                    it_per_id.feature_per_frame[k].depth);
 
@@ -555,8 +557,8 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
             {
                 if (k == j)
                     continue;
-                Eigen::Vector3d t1  = _Ps[imu_i + j] + Rs[imu_i + j] * _tic[0];
-                Eigen::Matrix3d R1  = Rs[imu_i + j] * _ric[0];
+                Eigen::Vector3d t1  = _Ps[imu_i + j] + Rs_[imu_i + j] * _tic[0];
+                Eigen::Matrix3d R1  = Rs_[imu_i + j] * _ric[0];
                 Eigen::Vector3d t20 = R0.transpose() * (t1 - t0);
                 Eigen::Matrix3d R20 = R0.transpose() * R1;
 
@@ -590,13 +592,13 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
                 {
                     int imu_j = imu_i - 1;
 
-                    ROS_ASSERT(NUM_OF_CAM == 1);
+                    // RCLCPP_ERROR(logger_, NUM_OF_CAM == 1);
                     Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);
                     int             svd_idx = 0;
 
                     Eigen::Matrix<double, 3, 4> P0;
-                    Eigen::Vector3d             t0 = _Ps[imu_i] + Rs[imu_i] * _tic[0];
-                    Eigen::Matrix3d             R0 = Rs[imu_i] * ric[0];
+                    Eigen::Vector3d             t0 = _Ps[imu_i] + Rs_[imu_i] * _tic[0];
+                    Eigen::Matrix3d             R0 = Rs_[imu_i] * ric[0];
                     P0.leftCols<3>()               = Eigen::Matrix3d::Identity();
                     P0.rightCols<1>()              = Eigen::Vector3d::Zero();
 
@@ -604,8 +606,8 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
                     {
                         imu_j++;
 
-                        Eigen::Vector3d             t1 = _Ps[imu_j] + Rs[imu_j] * _tic[0];
-                        Eigen::Matrix3d             R1 = Rs[imu_j] * ric[0];
+                        Eigen::Vector3d             t1 = _Ps[imu_j] + Rs_[imu_j] * _tic[0];
+                        Eigen::Matrix3d             R1 = Rs_[imu_j] * ric[0];
                         Eigen::Vector3d             t  = R0.transpose() * (t1 - t0);
                         Eigen::Matrix3d             R  = R0.transpose() * R1;
                         Eigen::Matrix<double, 3, 4> P;
@@ -618,7 +620,7 @@ void FeatureManager::triangulateWithDepth(Vector3d _Ps[], Vector3d _tic[], Matri
                         if (imu_i == imu_j)
                             continue;
                     }
-                    ROS_ASSERT(svd_idx == svd_A.rows());
+                    // RCLCPP_ERROR(logger_, svd_idx == svd_A.rows());
                     Eigen::Vector4d svd_V =
                         Eigen::JacobiSVD<Eigen::MatrixXd>(svd_A, Eigen::ComputeThinV)
                             .matrixV()

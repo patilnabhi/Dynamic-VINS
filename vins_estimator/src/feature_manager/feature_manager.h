@@ -12,10 +12,11 @@ using namespace std;
 
 using namespace Eigen;
 
-#include <ros/assert.h>
-#include <ros/console.h>
+// #include <ros/assert.h>
+// #include <ros/console.h>
+#include <rclcpp/rclcpp.hpp>
 
-#include <sensor_msgs/Image.h>
+#include <sensor_msgs/msg/image.hpp>
 
 #include "../utility/parameters.h"
 
@@ -88,7 +89,7 @@ public:
 class FeatureManager
 {
 public:
-    explicit FeatureManager(Matrix3d Rs[]);
+    explicit FeatureManager(const rclcpp::Logger& logger, Matrix3d Rs[]);
 
     void setRic(Matrix3d _ric[]);
 
@@ -152,7 +153,8 @@ public:
 private:
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);
 
-    const Matrix3d                    *Rs;
+    rclcpp::Logger logger_;
+    const Matrix3d                    *Rs_;
     Matrix3d                           ric[NUM_OF_CAM];
     unsigned short                     object_id{};
     map<unsigned short, DynamicObject> dynamic_objects;

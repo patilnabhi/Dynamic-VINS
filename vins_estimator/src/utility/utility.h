@@ -143,5 +143,5 @@ public:
             return angle_degrees - two_pi * std::floor((angle_degrees + T(180)) / two_pi);
         else
             return angle_degrees + two_pi * std::floor((-angle_degrees + T(180)) / two_pi);
-    };
+    }
 };

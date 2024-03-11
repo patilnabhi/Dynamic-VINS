@@ -129,7 +129,7 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
     return true;
 }
 
-void ProjectionFactor::check(double **parameters)
+void ProjectionFactor::params_check(double **parameters)
 {
     double  *res  = new double[15];
     double **jaco = new double *[4];
@@ -138,7 +138,7 @@ void ProjectionFactor::check(double **parameters)
     jaco[2]       = new double[2 * 7];
     jaco[3]       = new double[2 * 1];
     Evaluate(parameters, res, jaco);
-    puts("check begins");
+    puts("params_check begins");
 
     puts("my");
 
