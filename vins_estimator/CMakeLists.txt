@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
         cv_bridge
         camera_model
         message_filters
-        yolo_ros
+#         yolo_ros
         image_transport
 
         nodelet

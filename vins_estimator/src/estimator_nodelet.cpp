@@ -18,7 +18,7 @@
 #include "utility/tic_toc.h"
 #include "utility/visualization.h"
 
-#include <yolo_ros/DetectionMessages.h>
+// #include <yolo_ros/DetectionMessages.h>
 
 #include <nodelet/nodelet.h>  // 基类Nodelet所在的头文件
 #include <pluginlib/class_list_macros.h>
@@ -51,8 +51,8 @@ private:
         sub_image = nh.subscribe(IMAGE_TOPIC, 100, &EstimatorNodelet::image_callback, this);
         sub_depth = nh.subscribe(DEPTH_TOPIC, 100, &EstimatorNodelet::depth_callback, this);
 
-        sub_semantic =
-            nh.subscribe("/untracked_info", 100, &EstimatorNodelet::semantic_callback, this);
+        // sub_semantic =
+        //     nh.subscribe("/untracked_info", 100, &EstimatorNodelet::semantic_callback, this);
         if (USE_IMU)
             sub_imu = nh.subscribe(IMU_TOPIC, 100, &EstimatorNodelet::imu_callback, this,
                                    ros::TransportHints().tcpNoDelay());
@@ -85,7 +85,7 @@ private:
     queue<pair<pair<std_msgs::Header, sensor_msgs::ImageConstPtr>,
                map<int, Eigen::Matrix<double, 7, 1>>>>
                                                feature_buf;
-    queue<yolo_ros::DetectionMessagesConstPtr> semantic_buf;
+    // queue<yolo_ros::DetectionMessagesConstPtr> semantic_buf;
     queue<sensor_msgs::PointCloudConstPtr>     relo_buf;
     queue<pair<std_msgs::Header, cv::Mat>>     vis_img_buf;
 
@@ -143,12 +143,12 @@ private:
         con_tracker.notify_one();
     }
 
-    void semantic_callback(const yolo_ros::DetectionMessagesConstPtr &semantic_msg)
-    {
-        m_buf.lock();
-        semantic_buf.push(semantic_msg);
-        m_buf.unlock();
-    }
+    // void semantic_callback(const yolo_ros::DetectionMessagesConstPtr &semantic_msg)
+    // {
+    //     m_buf.lock();
+    //     semantic_buf.push(semantic_msg);
+    //     m_buf.unlock();
+    // }
 
     void relocalization_callback(const sensor_msgs::PointCloudConstPtr &points_msg)
     {
@@ -157,28 +157,28 @@ private:
         m_buf.unlock();
     }
 
-    void visualizeFeatureFilter(const map<int, Eigen::Matrix<double, 7, 1>> &features,
-                                const yolo_ros::DetectionMessagesConstPtr   &semantic_msg)
+    void visualizeFeatureFilter(const map<int, Eigen::Matrix<double, 7, 1>> &features)//,
+                                // const yolo_ros::DetectionMessagesConstPtr   &semantic_msg)
     {
         cv::Mat vis_img;
         m_vis.lock();
         while (!vis_img_buf.empty())
         {
-            if (vis_img_buf.front().first.stamp.toSec() == semantic_msg->header.stamp.toSec())
-            {
+            // if (vis_img_buf.front().first.stamp.toSec() == semantic_msg->header.stamp.toSec())
+            // {
                 vis_img = vis_img_buf.front().second;
                 vis_img_buf.pop();
                 break;
-            }
-            else if (vis_img_buf.front().first.stamp.toSec() < semantic_msg->header.stamp.toSec())
-            {
-                vis_img_buf.pop();
-            }
-            else
-            {
-                m_vis.unlock();
-                return;
-            }
+            // }
+            // else if (vis_img_buf.front().first.stamp.toSec() < semantic_msg->header.stamp.toSec())
+            // {
+                // vis_img_buf.pop();
+            // }
+            // else
+            // {
+                // m_vis.unlock();
+                // return;
+            // }
         }
         m_vis.unlock();
 
@@ -188,15 +188,15 @@ private:
             cv::circle(vis_img, cv::Point(feature.second[3], feature.second[4]), 5,
                        cv::Scalar(0, 255, 255), 2);
         }
-        for (auto &object : semantic_msg->data)
-        {
-            if (std::find(DYNAMIC_LABEL.begin(), DYNAMIC_LABEL.end(), object.label) !=
-                DYNAMIC_LABEL.end())
-            {
-                cv::rectangle(vis_img, cv::Point(object.x1, object.y1),
-                              cv::Point(object.x2, object.y2), cv::Scalar(0, 255, 0), 2);
-            }
-        }
+        // for (auto &object : semantic_msg->data)
+        // {
+        //     if (std::find(DYNAMIC_LABEL.begin(), DYNAMIC_LABEL.end(), object.label) !=
+        //         DYNAMIC_LABEL.end())
+        //     {
+        //         cv::rectangle(vis_img, cv::Point(object.x1, object.y1),
+        //                       cv::Point(object.x2, object.y2), cv::Scalar(0, 255, 0), 2);
+        //     }
+        // }
         pubTrackImg(vis_img);
 
         // cv::imshow("grids_detector_img",
@@ -208,22 +208,22 @@ private:
         // cv::moveWindow("feature_img", 0, 0);
         // cv::waitKey(1);
 
-        cv::Mat show_semantic_mask = estimator.f_manager.semantic_mask.clone();
-        for (int i = 0; i < COL - 1; ++i)
-        {
-            for (int k = 0; k < ROW - 1; ++k)
-            {
-                /* if (show_semantic_mask.at<unsigned short>(k, i) > 0)
-                  show_semantic_mask.at<unsigned short>(k, i) = 0xffff; */
-                if (estimator.f_manager.semantic_mask.at<unsigned short>(k, i) >
-                        estimator.f_manager.depth_img.at<unsigned short>(k, i) &&
-                    estimator.f_manager.depth_img.at<unsigned short>(k, i) > 0)
-                {
-                    show_semantic_mask.at<unsigned short>(k, i) = 0xffff;
-                }
-            }
-        }
-        pubSemanticMask(show_semantic_mask);
+        // cv::Mat show_semantic_mask = estimator.f_manager.semantic_mask.clone();
+        // for (int i = 0; i < COL - 1; ++i)
+        // {
+        //     for (int k = 0; k < ROW - 1; ++k)
+        //     {
+        //         /* if (show_semantic_mask.at<unsigned short>(k, i) > 0)
+        //           show_semantic_mask.at<unsigned short>(k, i) = 0xffff; */
+        //         if (estimator.f_manager.semantic_mask.at<unsigned short>(k, i) >
+        //                 estimator.f_manager.depth_img.at<unsigned short>(k, i) &&
+        //             estimator.f_manager.depth_img.at<unsigned short>(k, i) > 0)
+        //         {
+        //             show_semantic_mask.at<unsigned short>(k, i) = 0xffff;
+        //         }
+        //     }
+        // }
+        // pubSemanticMask(show_semantic_mask);
 
         // cv::imshow("semantic_mask_h", show_semantic_mask);
         // cv::moveWindow("semantic_mask_h", COL, 0);
@@ -233,13 +233,13 @@ private:
         // cv::waitKey(1);
     }
 
-    bool semanticAvailable(double t)
-    {
-        if (!semantic_buf.empty() && t <= semantic_buf.back()->header.stamp.toSec())
-            return true;
-        else
-            return false;
-    }
+    // bool semanticAvailable(double t)
+    // {
+    //     if (!semantic_buf.empty() && t <= semantic_buf.back()->header.stamp.toSec())
+    //         return true;
+    //     else
+    //         return false;
+    // }
 
     // thread: feature tracker
     [[noreturn]] void process_tracker()
@@ -581,51 +581,51 @@ private:
             estimator.f_manager.inputDepth(depth_img);
 
             double feature_time = feature_msg.first.first.stamp.toSec();
-            while (!semanticAvailable(feature_time))
-            {
-                // printf("waiting for semantic info ... \r");
-                std::this_thread::sleep_for(dura);
-            }
+            // while (!semanticAvailable(feature_time))
+            // {
+            //     // printf("waiting for semantic info ... \r");
+            //     std::this_thread::sleep_for(dura);
+            // }
 
-            yolo_ros::DetectionMessagesConstPtr semantic_msg = nullptr;
-            m_buf.lock();
-            while (!semantic_buf.empty())
-            {
-                if (semantic_buf.front()->header.stamp.toSec() < feature_time)
-                {
-                    semantic_buf.pop();
-                }
-                else if (semantic_buf.front()->header.stamp.toSec() == feature_time)
-                {
-                    semantic_msg = semantic_buf.front();
-                    semantic_buf.pop();
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            m_buf.unlock();
+            // yolo_ros::DetectionMessagesConstPtr semantic_msg = nullptr;
+            // m_buf.lock();
+            // while (!semantic_buf.empty())
+            // {
+            //     if (semantic_buf.front()->header.stamp.toSec() < feature_time)
+            //     {
+            //         semantic_buf.pop();
+            //     }
+            //     else if (semantic_buf.front()->header.stamp.toSec() == feature_time)
+            //     {
+            //         semantic_msg = semantic_buf.front();
+            //         semantic_buf.pop();
+            //         break;
+            //     }
+            //     else
+            //     {
+            //         break;
+            //     }
+            // }
+            // m_buf.unlock();
 
             TicToc semantic_time;
-            if (semantic_msg != nullptr)
-            {
-                for (auto &object : semantic_msg->data)
-                {
-                    if (std::find(DYNAMIC_LABEL.begin(), DYNAMIC_LABEL.end(), object.label) !=
-                        DYNAMIC_LABEL.end())
-                    {
-                        // type: uint32
-                        int x1 = ((int)object.x1 - 10 > 0) ? ((int)object.x1 - 10) : 0;
-                        int y1 = ((int)object.y1 - 10 > 0) ? ((int)object.y1 - 10) : 0;
-                        int x2 = ((int)object.x2 + 10 < COL) ? ((int)object.x2 + 10) : COL - 1;
-                        int y2 = ((int)object.y2 + 10 < ROW) ? ((int)object.y2 + 10) : ROW - 1;
-                        if (x2 >= 0 && x1 < COL && y2 >= 0 && y1 < ROW)
-                            estimator.f_manager.setSemanticMask(x1, y1, x2, y2);
-                    }
-                }
-            }
+            // if (semantic_msg != nullptr)
+            // {
+            //     for (auto &object : semantic_msg->data)
+            //     {
+            //         if (std::find(DYNAMIC_LABEL.begin(), DYNAMIC_LABEL.end(), object.label) !=
+            //             DYNAMIC_LABEL.end())
+            //         {
+            //             // type: uint32
+            //             int x1 = ((int)object.x1 - 10 > 0) ? ((int)object.x1 - 10) : 0;
+            //             int y1 = ((int)object.y1 - 10 > 0) ? ((int)object.y1 - 10) : 0;
+            //             int x2 = ((int)object.x2 + 10 < COL) ? ((int)object.x2 + 10) : COL - 1;
+            //             int y2 = ((int)object.y2 + 10 < ROW) ? ((int)object.y2 + 10) : ROW - 1;
+            //             if (x2 >= 0 && x1 < COL && y2 >= 0 && y1 < ROW)
+            //                 estimator.f_manager.setSemanticMask(x1, y1, x2, y2);
+            //         }
+            //     }
+            // }
 
             static double whole_semantic_time = 0;
             whole_semantic_time += semantic_time.toc();
@@ -651,12 +651,12 @@ private:
                 pubRelocalization(estimator);
 
             m_backend.unlock();
-            if (SHOW_TRACK && semantic_msg != nullptr)
+            if (SHOW_TRACK) // && semantic_msg != nullptr)
             {
                 pubKeyPoses(estimator, header);
                 pubCameraPose(estimator, header);
                 pubPointCloud(estimator, header);
-                visualizeFeatureFilter(feature_msg.second, semantic_msg);
+                visualizeFeatureFilter(feature_msg.second); //, semantic_msg);
             }
 
             static double whole_process_time = 0;
